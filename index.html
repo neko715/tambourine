@@ -562,143 +562,164 @@ function ensureAudio() {
 }
 
 /**
- * Play a single metallic jingle sound
- * @param {number} vol  0–1
- * @param {number} pit  pitch multiplier (0.9–1.1 range)
- * @param {number} del  delay in seconds
+ * マスターコンプレッサー（音量均一化・迫力UP）
  */
-function jingle(vol, pit, del) {
-  const t = actx.currentTime + del;
+function getMaster() {
+  if (!getMaster._node) {
+    const comp = actx.createDynamicsCompressor();
+    comp.threshold.value = -14;
+    comp.knee.value      = 6;
+    comp.ratio.value     = 4;
+    comp.attack.value    = 0.002;
+    comp.release.value   = 0.18;
+    comp.connect(actx.destination);
+    getMaster._node = comp;
+  }
+  return getMaster._node;
+}
 
-  // ── Inharmonic metallic oscillators ──────────────────
-  // Real metal = partials with non-integer frequency ratios
-  const partials = [
-    {f: 7180, a: 0.42, d: 0.20},
-    {f: 11200, a: 0.28, d: 0.14},
-    {f: 8640, a: 0.22, d: 0.24},
-    {f: 14600, a: 0.15, d: 0.10},
-    {f: 6080, a: 0.18, d: 0.28},
-  ];
+/**
+ * 単発のジングル音
+ * @param {number} vol    0–1
+ * @param {number} pit    ピッチ倍率
+ * @param {number} del    遅延秒
+ * @param {boolean} heavy trueなら「ズカ」用低域強調
+ */
+function jingle(vol, pit, del, heavy) {
+  const t   = actx.currentTime + del;
+  const dst = getMaster();
+
+  const partials = heavy
+    ? [
+        {f: 2800, a: 0.55, d: 0.32},
+        {f: 4600, a: 0.42, d: 0.24},
+        {f: 6200, a: 0.28, d: 0.18},
+        {f: 1800, a: 0.40, d: 0.40},
+        {f: 8000, a: 0.18, d: 0.13},
+      ]
+    : [
+        {f: 7180, a: 0.42, d: 0.18},
+        {f: 11200, a: 0.28, d: 0.12},
+        {f: 8640, a: 0.22, d: 0.20},
+        {f: 5200, a: 0.32, d: 0.26},
+        {f: 3600, a: 0.25, d: 0.30},
+      ];
 
   partials.forEach(({f, a, d}) => {
     const osc = actx.createOscillator();
     osc.type = 'sine';
     osc.frequency.value = f * pit;
     const g = actx.createGain();
-    g.gain.setValueAtTime(vol * a * 0.22, t);
+    g.gain.setValueAtTime(vol * a * 0.20, t);
     g.gain.exponentialRampToValueAtTime(0.00001, t + d);
-    osc.connect(g); g.connect(actx.destination);
+    osc.connect(g); g.connect(dst);
     osc.start(t); osc.stop(t + d + 0.01);
   });
 
-  // ── Noise burst (sizzle) ──────────────────────────────
+  // ノイズ成分
   const src = actx.createBufferSource();
   src.buffer = noiseBuffer;
-  const offset = Math.random() * 0.8; // random start in buffer
-  
-  const hpf = actx.createBiquadFilter();
-  hpf.type = 'highpass';
-  hpf.frequency.value = 5500 * pit;
-  hpf.Q.value = 0.4;
+  const offset = Math.random() * 0.8;
 
-  const bpf = actx.createBiquadFilter();
-  bpf.type = 'peaking';
-  bpf.frequency.value = 9200 * pit;
-  bpf.gain.value = 7;
+  const f1 = actx.createBiquadFilter();
+  f1.type          = heavy ? 'bandpass' : 'highpass';
+  f1.frequency.value = heavy ? 1400 * pit : 5000 * pit;
+  f1.Q.value       = heavy ? 1.2 : 0.5;
+
+  const f2 = actx.createBiquadFilter();
+  f2.type = 'peaking';
+  f2.frequency.value = heavy ? 2200 * pit : 8000 * pit;
+  f2.gain.value = 9;
 
   const ng = actx.createGain();
-  ng.gain.setValueAtTime(vol * 0.3, t);
-  ng.gain.exponentialRampToValueAtTime(0.00001, t + 0.13);
+  const nVol = heavy ? vol * 0.55 : vol * 0.28;
+  const nDec = heavy ? 0.24       : 0.12;
+  ng.gain.setValueAtTime(nVol, t);
+  ng.gain.exponentialRampToValueAtTime(0.00001, t + nDec);
 
-  src.connect(hpf); hpf.connect(bpf); bpf.connect(ng); ng.connect(actx.destination);
-  src.start(t, offset); src.stop(t + 0.14);
+  src.connect(f1); f1.connect(f2); f2.connect(ng); ng.connect(dst);
+  src.start(t, offset); src.stop(t + nDec + 0.01);
+
+  // heavy時のサブ低域「ズ」成分
+  if (heavy) {
+    const sub = actx.createOscillator();
+    sub.type = 'sine';
+    sub.frequency.setValueAtTime(110 * pit, t);
+    sub.frequency.exponentialRampToValueAtTime(52 * pit, t + 0.14);
+    const sg = actx.createGain();
+    sg.gain.setValueAtTime(vol * 0.30, t);
+    sg.gain.exponentialRampToValueAtTime(0.00001, t + 0.16);
+    sub.connect(sg); sg.connect(dst);
+    sub.start(t); sub.stop(t + 0.17);
+  }
 }
 
 /**
- * Drum skin thud (for タン)
+ * ドン！の胴鳴り（タップ用）
  */
 function thud(vol) {
-  const t = actx.currentTime;
+  const t   = actx.currentTime;
+  const dst = getMaster();
 
-  // Low body resonance with pitch drop
+  // サブ低域「ドン」核（深いピッチダウン）
+  const sub = actx.createOscillator();
+  sub.type = 'sine';
+  sub.frequency.setValueAtTime(160, t);
+  sub.frequency.exponentialRampToValueAtTime(40, t + 0.22);
+  const subG = actx.createGain();
+  subG.gain.setValueAtTime(vol * 1.15, t);
+  subG.gain.exponentialRampToValueAtTime(0.00001, t + 0.32);
+  sub.connect(subG); subG.connect(dst);
+  sub.start(t); sub.stop(t + 0.34);
+
+  // 中域ボディ（皮の張り感）
   const body = actx.createOscillator();
-  body.type = 'sine';
-  body.frequency.setValueAtTime(200, t);
-  body.frequency.exponentialRampToValueAtTime(72, t + 0.10);
-  const bg = actx.createGain();
-  bg.gain.setValueAtTime(vol * 0.92, t);
-  bg.gain.exponentialRampToValueAtTime(0.00001, t + 0.18);
-  body.connect(bg); bg.connect(actx.destination);
+  body.type = 'triangle';
+  body.frequency.setValueAtTime(320, t);
+  body.frequency.exponentialRampToValueAtTime(90, t + 0.14);
+  const bodyG = actx.createGain();
+  bodyG.gain.setValueAtTime(vol * 0.70, t);
+  bodyG.gain.exponentialRampToValueAtTime(0.00001, t + 0.18);
+  body.connect(bodyG); bodyG.connect(dst);
   body.start(t); body.stop(t + 0.20);
 
-  // Sharp impact click
+  // 打撃アタック（短いクリック）
   const click = actx.createOscillator();
-  click.type = 'triangle';
-  click.frequency.setValueAtTime(1400, t);
-  click.frequency.exponentialRampToValueAtTime(280, t + 0.018);
-  const cg = actx.createGain();
-  cg.gain.setValueAtTime(vol * 0.55, t);
-  cg.gain.exponentialRampToValueAtTime(0.00001, t + 0.022);
-  click.connect(cg); cg.connect(actx.destination);
-  click.start(t); click.stop(t + 0.025);
+  click.type = 'square';
+  click.frequency.setValueAtTime(700, t);
+  click.frequency.exponentialRampToValueAtTime(110, t + 0.012);
+  const clickG = actx.createGain();
+  clickG.gain.setValueAtTime(vol * 0.38, t);
+  clickG.gain.exponentialRampToValueAtTime(0.00001, t + 0.014);
+  click.connect(clickG); clickG.connect(dst);
+  click.start(t); click.stop(t + 0.016);
 
-  // Mid overtone
-  const mid = actx.createOscillator();
-  mid.type = 'sine';
-  mid.frequency.setValueAtTime(420, t);
-  mid.frequency.exponentialRampToValueAtTime(180, t + 0.06);
-  const mg = actx.createGain();
-  mg.gain.setValueAtTime(vol * 0.28, t);
-  mg.gain.exponentialRampToValueAtTime(0.00001, t + 0.09);
-  mid.connect(mg); mg.connect(actx.destination);
-  mid.start(t); mid.stop(t + 0.10);
-
-  // Skin noise
+  // 皮ノイズ（低域のみ）
   const src = actx.createBufferSource();
   src.buffer = noiseBuffer;
   const lpf = actx.createBiquadFilter();
   lpf.type = 'lowpass';
-  lpf.frequency.value = 2800;
-  const sng = actx.createGain();
-  sng.gain.setValueAtTime(vol * 0.25, t);
-  sng.gain.exponentialRampToValueAtTime(0.00001, t + 0.06);
-  src.connect(lpf); lpf.connect(sng); sng.connect(actx.destination);
-  src.start(t, Math.random() * 0.5); src.stop(t + 0.07);
+  lpf.frequency.value = 1600;
+  lpf.Q.value = 0.7;
+  const noiseG = actx.createGain();
+  noiseG.gain.setValueAtTime(vol * 0.32, t);
+  noiseG.gain.exponentialRampToValueAtTime(0.00001, t + 0.12);
+  src.connect(lpf); lpf.connect(noiseG); noiseG.connect(dst);
+  src.start(t, Math.random() * 0.5); src.stop(t + 0.13);
 }
 
 /**
- * Full TAP sound (タン = thud + jingles)
+ * ドン＋ジングル（タップ）
  */
 function playTap() {
   ensureAudio();
-  thud(0.88);
-  const count = 6;
-  for (let i = 0; i < count; i++) {
-    jingle(
-      0.52 - i * 0.06,
-      0.96 + Math.random() * 0.08,
-      i * 0.016
-    );
+  thud(0.92);
+  for (let i = 0; i < 6; i++) {
+    jingle(0.55 - i * 0.07, 0.92 + Math.random() * 0.12, i * 0.018, true);
   }
 }
 
-/**
- * Shake sound (シャカ = jingle bursts only)
- * @param {number} intensity  0–1
- */
-function playShake(intensity) {
-  ensureAudio();
-  const count = Math.round(2 + intensity * 7);
-  const baseVol = 0.18 + intensity * 0.55;
-  const spread = 0.015 + (1 - intensity) * 0.03;
-  for (let i = 0; i < count; i++) {
-    jingle(
-      baseVol * Math.pow(0.82, i),
-      0.88 + Math.random() * 0.24,
-      i * spread
-    );
-  }
-}
+/* playShake は物理エンジンに置き換えられました */
 
 /* ═══════════════════════════════════════════════════
    BUILD TAMBOURINE JINGLES
@@ -737,8 +758,39 @@ const jingleGroups = [];
 })();
 
 /* ═══════════════════════════════════════════════════
-   VISUAL FEEDBACK
+   JINGLE PHYSICS STATE
+   各ジングルを独立した振り子としてモデル化。
+   リム上の角度ごとに加速度の射影が異なるので、
+   方向によって鳴るジングルが変わる。
 ═══════════════════════════════════════════════════ */
+const PHY = {
+  THETA_MAX:   0.32,  // スロット壁の角度（rad）
+  RESTITUTION: 0.28,  // 衝突後の速度保持率
+  DAMPING:     6.0,   // 減衰係数（大きいほど早く止まる）
+  DRIVE:       48,    // 加速度→角加速度の倍率
+  MIN_HIT_VEL: 1.4,   // 音が鳴る最小衝突速度
+  HIT_COOL:    22,    // 同一ジングルの連続発音クールダウン(ms)
+  GRAV_RESTORE:10,    // 重力による復元力の強さ
+};
+
+// 感度スライダーの値でDRIVEをスケール
+function getDriveScale() {
+  const s = parseInt(document.getElementById('sens-slider').value);
+  return PHY.DRIVE * (0.5 + s * 0.1); // sens1→0.6x, sens10→1.5x
+}
+
+const jingleStates = jingleGroups.map((_, i) => ({
+  theta:     0,          // 現在の振れ角(rad)
+  omega:     0,          // 角速度(rad/s)
+  rimAngle:  (i / NUM_JINGLES) * Math.PI * 2, // リム上の位置(rad, 0=上)
+  lastHitMs: 0,          // 最後に音を鳴らした時刻
+  pitchBase: 0.88 + (i / NUM_JINGLES) * 0.24, // 位置ごとの音程バリエーション
+}));
+
+// センサーから更新される線形加速度（重力除去済み）
+let accLinear = { x: 0, y: 0, z: 0 };
+
+
 const wordDisplay = document.getElementById('word-display');
 let wordTimer = null;
 
@@ -797,23 +849,108 @@ function triggerTapViz(cx, cy) {
   });
 }
 
-function triggerShakeViz(intensity) {
-  // Tambourine bounce
+function triggerTambourineBounce() {
   tambourine.style.animation = 'none';
   void tambourine.offsetWidth;
   tambourine.style.animation = 'tb-bounce 0.16s ease-in-out';
   tambourine.addEventListener('animationend', () => { tambourine.style.animation = ''; }, { once: true });
+}
 
-  // Rattle jingles (staggered, more intense = faster stagger)
-  jingleGroups.forEach(({ slot }, i) => {
-    const d = i * Math.max(5, 18 - intensity * 14);
-    setTimeout(() => {
-      slot.classList.remove('rattling');
-      void slot.offsetWidth;
-      slot.classList.add('rattling');
-      slot.addEventListener('animationend', () => slot.classList.remove('rattling'), { once: true });
-    }, d);
+/* ── 単一ジングル衝突処理 ─────────────────────────────── */
+function onJingleHit(idx, impactOmega) {
+  const s = jingleStates[idx];
+  const nowMs = performance.now();
+  if (nowMs - s.lastHitMs < PHY.HIT_COOL) return;
+  s.lastHitMs = nowMs;
+
+  const intensity = Math.min(1, (Math.abs(impactOmega) - PHY.MIN_HIT_VEL) / 14);
+  const vol = 0.18 + intensity * 0.52;
+  const pit = s.pitchBase * (0.96 + Math.random() * 0.08);
+  jingle(vol, pit, 0, true);
+
+  // ジングルvisual（CSSアニメは物理に任せるのでクラスは使わない）
+  // 衝突の強さに応じた軽いフラッシュ
+  const slot = jingleGroups[idx].slot;
+  slot.style.filter = `brightness(${1.2 + intensity * 0.5})`;
+  setTimeout(() => { slot.style.filter = ''; }, 60);
+}
+
+/* ── 物理ループ（rAF駆動） ───────────────────────────────
+   各ジングルを振り子方程式で積分し、スロット壁衝突で発音。
+   dt は前フレームからの経過時間（40ms上限でキャップ）。
+   ─────────────────────────────────────────────────────── */
+let _lastPhysTime = null;
+let _totalKE      = 0;   // 全ジングルの運動エネルギー合計
+let _lastWordMs   = 0;
+
+function physicsFrame(now) {
+  if (!_lastPhysTime) _lastPhysTime = now;
+  const dt = Math.min((now - _lastPhysTime) / 1000, 0.040);
+  _lastPhysTime = now;
+
+  const drive = getDriveScale();
+  const { x: ax, y: ay } = accLinear;
+  // 重力ベクトル（傾き検出用、gravLP から）
+  const gx = gravLP.x, gy = gravLP.y;
+  const gMag = Math.sqrt(gx * gx + gy * gy) || 9.8;
+
+  _totalKE = 0;
+
+  jingleStates.forEach((s, i) => {
+    const { rimAngle } = s;
+
+    // リム接線方向への加速度射影
+    // rimAngle=0 → 上端, π/2 → 右端
+    // 接線ベクトル: (cos α, sin α) [x右, y下]
+    // iOS: y軸は上が正なので符号反転
+    const tangX =  Math.cos(rimAngle);
+    const tangY =  Math.sin(rimAngle);
+    const aTang = ax * tangX - ay * tangY; // y軸反転
+
+    // 重力による復元力（振り子の「下へ戻ろうとする」力）
+    // 実際の重力方向への θ の依存分
+    const gTang = gx * tangX - gy * tangY;
+    const gRestore = (gTang / gMag) * PHY.GRAV_RESTORE * s.theta;
+
+    // 運動方程式: θ'' = -drive * a_tang - g_restore - damping * θ'
+    const alpha = -drive * aTang - gRestore - PHY.DAMPING * s.omega;
+
+    s.omega += alpha * dt;
+    s.theta += s.omega * dt;
+
+    // ── 壁衝突 ─────────────────────────────────
+    if (Math.abs(s.theta) >= PHY.THETA_MAX) {
+      const sign = Math.sign(s.theta);
+      s.theta = sign * PHY.THETA_MAX;
+
+      if (Math.abs(s.omega) > PHY.MIN_HIT_VEL) {
+        onJingleHit(i, s.omega);
+      }
+      // バウンス
+      s.omega = -s.omega * PHY.RESTITUTION;
+    }
+
+    // ── ビジュアル：slot を θ に合わせて傾ける ──
+    const deg = s.theta * (180 / Math.PI) * 0.85;
+    jingleGroups[i].slot.style.transform = `rotate(${deg.toFixed(2)}deg)`;
+
+    _totalKE += 0.5 * s.omega * s.omega;
   });
+
+  // ── 全体の揺れ感（運動エネルギー合計が大きいときバウンス）
+  const avgKE = _totalKE / NUM_JINGLES;
+  if (avgKE > 12) {
+    const nowD = Date.now();
+    if (nowD - _lastWordMs > 320) {
+      _lastWordMs = nowD;
+      triggerTambourineBounce();
+      const intensity = Math.min(1, avgKE / 50);
+      const rep = intensity < 0.35 ? 1 : intensity < 0.7 ? 2 : 3;
+      showWord('ズカ'.repeat(rep) + (intensity > 0.65 ? '！' : ''), 'word-shaka');
+    }
+  }
+
+  requestAnimationFrame(physicsFrame);
 }
 
 /* ═══════════════════════════════════════════════════
@@ -845,87 +982,66 @@ membrane.addEventListener('touchstart', (e) => { e.preventDefault(); handleTap(e
 membrane.addEventListener('mousedown',  handleTap);
 
 /* ═══════════════════════════════════════════════════
-   DEVICE MOTION (Shake + Tilt)
+   DEVICE MOTION → 物理エンジンへの入力
+   センサー値は accLinear に書き込むだけ。
+   実際の発音・ビジュアルは physicsFrame が担当。
 ═══════════════════════════════════════════════════ */
 const motionStatus = document.getElementById('motion-status');
 const tbInner = document.getElementById('tb-inner');
 
-let prevAcc    = null;
-let lastShakeMs = 0;
-let shakeWindow = [];
-const WIN = 5; // rolling average window size
-
-// Low-pass filtered gravity for tilt
+// 重力成分（傾き検出用 低パスフィルター）
 let gravLP = { x: 0, y: 0, z: -9.8 };
-const LP_ALPHA = 0.12;
+const LP_ALPHA = 0.10;
+
+// 線形加速度のさらに軽いノイズ除去（高周波ノイズを少し平滑化）
+let accSmooth = { x: 0, y: 0, z: 0 };
+const ACC_ALPHA = 0.7; // 速い変化に追従
 
 let motionActive = false;
 
 function onMotion(e) {
   const raw  = e.accelerationIncludingGravity;
-  const pure = e.acceleration; // may be null
+  const pure = e.acceleration;
   if (!raw) return;
 
   const rx = raw.x || 0, ry = raw.y || 0, rz = raw.z || 0;
 
-  // ── Tilt parallax ────────────────────────────────────
+  // ── 重力推定（超低パス）─────────────────────────
   gravLP.x += LP_ALPHA * (rx - gravLP.x);
   gravLP.y += LP_ALPHA * (ry - gravLP.y);
   gravLP.z += LP_ALPHA * (rz - gravLP.z);
 
-  // Normalise gravity to -1..1 range (~9.8 m/s² max)
+  // ── 傾きによる3D回転ビジュアル ──────────────────
   const tiltX = Math.max(-1, Math.min(1, gravLP.y / 9.8));
   const tiltY = Math.max(-1, Math.min(1, gravLP.x / 9.8));
-  const maxDeg = 14;
   tbInner.style.transform =
-    `perspective(500px) rotateX(${(-tiltX * maxDeg).toFixed(2)}deg) rotateY(${(tiltY * maxDeg).toFixed(2)}deg)`;
+    `perspective(500px) rotateX(${(-tiltX * 14).toFixed(2)}deg) rotateY(${(tiltY * 14).toFixed(2)}deg)`;
 
-  // ── Shake detection ───────────────────────────────────
-  // Prefer acceleration-without-gravity; fall back to delta of raw
+  // ── 線形加速度（重力除去）→ 物理エンジンへ ──────
   let ax, ay, az;
   if (pure && pure.x != null) {
     ax = pure.x || 0; ay = pure.y || 0; az = pure.z || 0;
   } else {
-    // Subtract gravity estimate
     ax = rx - gravLP.x; ay = ry - gravLP.y; az = rz - gravLP.z;
   }
 
-  const cur = { x: ax, y: ay, z: az };
+  // 軽いローパスでノイズ除去
+  accSmooth.x += ACC_ALPHA * (ax - accSmooth.x);
+  accSmooth.y += ACC_ALPHA * (ay - accSmooth.y);
+  accSmooth.z += ACC_ALPHA * (az - accSmooth.z);
 
-  if (!prevAcc) { prevAcc = cur; return; }
-
-  const dx = cur.x - prevAcc.x;
-  const dy = cur.y - prevAcc.y;
-  const dz = cur.z - prevAcc.z;
-  const delta = Math.sqrt(dx*dx + dy*dy + dz*dz);
-  prevAcc = cur;
-
-  shakeWindow.push(delta);
-  if (shakeWindow.length > WIN) shakeWindow.shift();
-  const avg = shakeWindow.reduce((a, b) => a + b, 0) / shakeWindow.length;
-
-  const sens = parseInt(document.getElementById('sens-slider').value);
-  // threshold: sens 1 → 22, sens 10 → 4
-  const threshold = 24 - sens * 2;
-  const cooldown  = Math.max(38, 100 - sens * 6);
-
-  const now = Date.now();
-  if (avg > threshold && now - lastShakeMs > cooldown) {
-    lastShakeMs = now;
-    const intensity = Math.min(1, avg / (threshold * 2.8));
-    playShake(intensity);
-    triggerShakeViz(intensity);
-
-    // Build シャカ text (more intense = more repeats)
-    const rep = intensity < 0.35 ? 1 : intensity < 0.7 ? 2 : 3;
-    showWord('シャカ'.repeat(rep) + (intensity > 0.65 ? '！' : ''), 'word-shaka');
-  }
+  // 物理ループが参照するグローバル変数に書き込む
+  accLinear.x = accSmooth.x;
+  accLinear.y = accSmooth.y;
+  accLinear.z = accSmooth.z;
 }
 
 function startMotion() {
+  // 物理ループを開始
+  requestAnimationFrame(physicsFrame);
+
   if (typeof DeviceMotionEvent !== 'undefined') {
     if (typeof DeviceMotionEvent.requestPermission === 'function') {
-      // iOS 13+
       DeviceMotionEvent.requestPermission()
         .then(state => {
           if (state === 'granted') {
@@ -940,14 +1056,10 @@ function startMotion() {
           motionStatus.textContent = '⚠ センサーエラー · タップで演奏';
         });
     } else {
-      // Android / non-Safari
       window.addEventListener('devicemotion', onMotion);
-
-      // Check if device actually sends events
       let checkTimer = setTimeout(() => {
         motionStatus.textContent = '💻 デスクトップモード · クリックで演奏';
       }, 1200);
-
       window.addEventListener('devicemotion', () => {
         clearTimeout(checkTimer);
         if (!motionActive) {
