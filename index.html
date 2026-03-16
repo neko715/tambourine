@@ -1,0 +1,998 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<title>🥁 タンバリン</title>
+<link href="https://fonts.googleapis.com/css2?family=Zen+Kaku+Gothic+New:wght@400;700;900&display=swap" rel="stylesheet">
+<style>
+*, *::before, *::after {
+  margin: 0; padding: 0;
+  box-sizing: border-box;
+  -webkit-tap-highlight-color: transparent;
+  user-select: none;
+  -webkit-user-select: none;
+  touch-action: none;
+}
+
+:root {
+  --wood-a: #c07838;
+  --wood-b: #7a3c18;
+  --wood-c: #3e1a08;
+  --wood-edge: #1a0a04;
+  --gold: #d4a83c;
+  --silver: #c8c8b8;
+  --skin: #e8d098;
+  --bg: #0e0806;
+  --text: #f0e0c0;
+  --accent-tan: #ffd060;
+  --accent-shaka: #80d8ff;
+}
+
+html, body {
+  width: 100%; height: 100dvh;
+  overflow: hidden;
+}
+
+body {
+  background: var(--bg);
+  background-image:
+    radial-gradient(ellipse 80% 60% at 50% 0%, #2a1208 0%, transparent 60%),
+    radial-gradient(ellipse 60% 40% at 20% 100%, #180a04 0%, transparent 50%);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 16px 20px;
+  font-family: 'Zen Kaku Gothic New', 'Hiragino Kaku Gothic ProN', sans-serif;
+}
+
+/* ── Header ─────────────────────────────────────────────── */
+header {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  pointer-events: none;
+  flex-shrink: 0;
+}
+
+h1 {
+  font-size: clamp(13px, 3.5vw, 20px);
+  font-weight: 900;
+  letter-spacing: 0.35em;
+  color: var(--text);
+  opacity: 0.85;
+  text-transform: uppercase;
+  padding-left: 0.35em;
+}
+
+#motion-status {
+  font-size: 10px;
+  color: var(--gold);
+  opacity: 0.65;
+  letter-spacing: 0.08em;
+}
+
+/* ── Tambourine wrapper ─────────────────────────────────── */
+#tb-wrapper {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  perspective: 600px;
+}
+
+#tb-inner {
+  transition: transform 0.08s ease-out;
+  transform-style: preserve-3d;
+}
+
+/* ── Main tambourine ────────────────────────────────────── */
+#tambourine {
+  --sz: min(78vw, calc(100dvh - 200px), 420px);
+  width: var(--sz);
+  height: var(--sz);
+  border-radius: 50%;
+  position: relative;
+
+  /* Conic wood grain */
+  background:
+    conic-gradient(
+      from 5deg at 50% 50%,
+      #9a5428 0deg,  #c07838 7deg,  #a06030 14deg, #7a3c18 21deg,
+      #8a4820 28deg, #b86c30 35deg, #a05828 42deg, #6e3618 49deg,
+      #9a5428 56deg, #c07838 63deg, #a06030 70deg, #7a3c18 77deg,
+      #8a4820 84deg, #b86c30 91deg, #a05828 98deg, #6e3618 105deg,
+      #9a5428 112deg,#c07838 119deg,#a06030 126deg,#7a3c18 133deg,
+      #8a4820 140deg,#b86c30 147deg,#a05828 154deg,#6e3618 161deg,
+      #9a5428 168deg,#c07838 175deg,#a06030 182deg,#7a3c18 189deg,
+      #8a4820 196deg,#b86c30 203deg,#a05828 210deg,#6e3618 217deg,
+      #9a5428 224deg,#c07838 231deg,#a06030 238deg,#7a3c18 245deg,
+      #8a4820 252deg,#b86c30 259deg,#a05828 266deg,#6e3618 273deg,
+      #9a5428 280deg,#c07838 287deg,#a06030 294deg,#7a3c18 301deg,
+      #8a4820 308deg,#b86c30 315deg,#a05828 322deg,#6e3618 329deg,
+      #9a5428 336deg,#c07838 343deg,#a06030 350deg,#7a3c18 357deg,
+      #9a5428 360deg
+    );
+
+  box-shadow:
+    0 0 0 5px #1a0a04,
+    0 0 0 9px #2c1208,
+    0 28px 80px rgba(0,0,0,0.9),
+    0 8px 30px rgba(0,0,0,0.6),
+    inset 0 6px 18px rgba(255,200,120,0.12),
+    inset 0 -6px 18px rgba(0,0,0,0.35);
+
+  /* Wood grain overlay */
+  filter: drop-shadow(0 0 2px rgba(0,0,0,0.5));
+}
+
+/* Rim highlight ring */
+#tambourine::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  background: radial-gradient(circle at 35% 28%,
+    rgba(255,220,140,0.18) 0%,
+    transparent 55%
+  );
+  pointer-events: none;
+  z-index: 3;
+}
+
+/* Inner bevel */
+#tambourine::after {
+  content: '';
+  position: absolute;
+  border-radius: 50%;
+  inset: 16.5%;
+  box-shadow:
+    0 0 0 2px rgba(0,0,0,0.7),
+    0 0 0 4px rgba(255,180,80,0.08),
+    inset 0 2px 6px rgba(0,0,0,0.4);
+  pointer-events: none;
+  z-index: 3;
+}
+
+/* ── Membrane ───────────────────────────────────────────── */
+#membrane {
+  position: absolute;
+  inset: 18%;
+  border-radius: 50%;
+  overflow: hidden;
+  cursor: pointer;
+  z-index: 2;
+
+  background:
+    radial-gradient(circle at 38% 32%,
+      #f8eed8 0%, #ecd898 20%,
+      #dcc07a 45%, #c8a85c 68%,
+      #b09040 85%, #987830 100%
+    );
+
+  box-shadow:
+    inset 0 4px 14px rgba(0,0,0,0.4),
+    inset 0 -3px 8px rgba(255,255,255,0.12),
+    0 0 0 2px rgba(0,0,0,0.6);
+}
+
+/* Membrane skin texture */
+#membrane::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  background:
+    repeating-radial-gradient(
+      circle at 50% 50%,
+      transparent 0px,
+      transparent 22px,
+      rgba(0,0,0,0.025) 22px,
+      rgba(0,0,0,0.025) 23px
+    );
+  pointer-events: none;
+}
+
+/* Membrane sheen */
+#membrane::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  background:
+    radial-gradient(ellipse 55% 40% at 30% 25%,
+      rgba(255,255,255,0.12) 0%, transparent 60%
+    ),
+    radial-gradient(ellipse 30% 20% at 70% 70%,
+      rgba(0,0,0,0.08) 0%, transparent 50%
+    );
+  pointer-events: none;
+}
+
+/* ── Ripple ─────────────────────────────────────────────── */
+.ripple {
+  position: absolute;
+  width: 14px; height: 14px;
+  border-radius: 50%;
+  background: rgba(255,255,255,0.4);
+  pointer-events: none;
+  transform: translate(-50%, -50%) scale(0);
+  animation: ripple-expand 0.5s ease-out forwards;
+}
+
+@keyframes ripple-expand {
+  0%   { transform: translate(-50%,-50%) scale(0); opacity: 0.9; }
+  100% { transform: translate(-50%,-50%) scale(18); opacity: 0; }
+}
+
+.ripple-ring {
+  position: absolute;
+  width: 14px; height: 14px;
+  border-radius: 50%;
+  border: 2px solid rgba(255,240,200,0.5);
+  pointer-events: none;
+  transform: translate(-50%, -50%) scale(0);
+  animation: ring-expand 0.6s ease-out 0.05s forwards;
+}
+
+@keyframes ring-expand {
+  0%   { transform: translate(-50%,-50%) scale(0); opacity: 0.7; }
+  100% { transform: translate(-50%,-50%) scale(15); opacity: 0; }
+}
+
+/* ── Jingle slots ───────────────────────────────────────── */
+.jingle-group {
+  position: absolute;
+  z-index: 4;
+  transform-origin: center center;
+}
+
+.jingle-slot {
+  width: 20px;
+  height: 30px;
+  border-radius: 3px 3px 4px 4px;
+  background: linear-gradient(180deg, #1e0c06 0%, #2e1408 50%, #1e0c06 100%);
+  border: 1px solid #0e0604;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 3px;
+  box-shadow:
+    inset 0 1px 3px rgba(0,0,0,0.8),
+    inset 0 -1px 2px rgba(255,150,60,0.06),
+    0 1px 3px rgba(0,0,0,0.5);
+  transform-origin: center bottom;
+}
+
+.jingle-disc {
+  width: 16px; height: 6px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.jingle-disc:nth-child(1) {
+  background: linear-gradient(135deg,
+    #e0ddd2 0%, #b0a898 25%,
+    #d0cdc2 50%, #888078 75%,
+    #c0bdb2 100%
+  );
+  border: 0.5px solid #686058;
+  box-shadow: 0 1px 2px rgba(0,0,0,0.5), inset 0 0.5px 1px rgba(255,255,255,0.3);
+}
+
+.jingle-disc:nth-child(2) {
+  background: linear-gradient(135deg,
+    #dfc060 0%, #b89030 30%,
+    #d8b850 55%, #906820 80%,
+    #c0a040 100%
+  );
+  border: 0.5px solid #7a5818;
+  box-shadow: 0 1px 2px rgba(0,0,0,0.5), inset 0 0.5px 1px rgba(255,240,180,0.25);
+}
+
+/* ── Animations ─────────────────────────────────────────── */
+@keyframes jingle-rattle {
+  0%,100% { transform: rotate(0deg) scaleY(1); }
+  15%     { transform: rotate(-18deg) scaleY(0.95); }
+  35%     { transform: rotate(14deg) scaleY(0.97); }
+  55%     { transform: rotate(-12deg) scaleY(0.96); }
+  75%     { transform: rotate(9deg) scaleY(0.98); }
+}
+
+.jingle-slot.rattling {
+  animation: jingle-rattle 0.14s ease-in-out;
+}
+
+@keyframes tb-bounce {
+  0%,100% { transform: scale(1) rotate(0deg); }
+  20%     { transform: scale(1.012) rotate(-1.5deg); }
+  45%     { transform: scale(1.015) rotate(1.8deg); }
+  65%     { transform: scale(1.01) rotate(-1.2deg); }
+  82%     { transform: scale(1.008) rotate(0.8deg); }
+}
+
+@keyframes membrane-flash {
+  0%,100% { filter: brightness(1) saturate(1); }
+  25%     { filter: brightness(1.45) saturate(1.1); }
+}
+
+#membrane.flashing {
+  animation: membrane-flash 0.18s ease-out;
+}
+
+/* ── Word display ────────────────────────────────────────── */
+#word-display {
+  height: 60px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  pointer-events: none;
+  flex-shrink: 0;
+  width: 100%;
+}
+
+.word-wrap {
+  display: inline-flex;
+  gap: 0.05em;
+}
+
+.word-char {
+  display: inline-block;
+  font-weight: 900;
+  font-size: clamp(30px, 9vw, 52px);
+  letter-spacing: 0.05em;
+}
+
+.word-tan .word-char {
+  color: var(--accent-tan);
+  text-shadow:
+    0 0 18px rgba(255,200,60,0.7),
+    0 0 40px rgba(255,160,0,0.35);
+  animation: char-pop 0.45s cubic-bezier(0.2,1.4,0.5,1) both;
+}
+
+.word-shaka .word-char {
+  color: var(--accent-shaka);
+  text-shadow:
+    0 0 16px rgba(100,200,255,0.7),
+    0 0 36px rgba(60,160,255,0.3);
+  animation: char-wave 0.5s cubic-bezier(0.2,1.4,0.5,1) both;
+}
+
+@keyframes char-pop {
+  0%   { transform: scale(0.2) translateY(12px) rotate(-8deg); opacity: 0; }
+  60%  { transform: scale(1.12) translateY(-2px) rotate(2deg); opacity: 1; }
+  80%  { transform: scale(0.97) translateY(0) rotate(-1deg); opacity: 1; }
+  100% { transform: scale(1) translateY(0) rotate(0deg); opacity: 0.85; }
+}
+
+@keyframes char-wave {
+  0%   { transform: scale(0.3) translateY(8px); opacity: 0; }
+  55%  { transform: scale(1.1) translateY(-3px); opacity: 1; }
+  100% { transform: scale(1) translateY(0); opacity: 0.85; }
+}
+
+.word-fade-out {
+  animation: fade-out 0.3s ease-in forwards !important;
+}
+
+@keyframes fade-out {
+  0%   { opacity: 0.85; transform: translateY(0) scale(1); }
+  100% { opacity: 0; transform: translateY(-8px) scale(0.9); }
+}
+
+/* ── Controls ────────────────────────────────────────────── */
+#controls {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-shrink: 0;
+  opacity: 0.55;
+  transition: opacity 0.3s;
+}
+
+#controls:hover, #controls:focus-within {
+  opacity: 0.85;
+}
+
+#controls label {
+  font-size: 10px;
+  color: var(--text);
+  letter-spacing: 0.12em;
+  white-space: nowrap;
+}
+
+#sens-slider {
+  -webkit-appearance: none;
+  width: 110px; height: 4px;
+  border-radius: 2px;
+  background: rgba(255,255,255,0.18);
+  outline: none;
+  touch-action: auto;
+}
+
+#sens-slider::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  width: 15px; height: 15px;
+  border-radius: 50%;
+  background: var(--gold);
+  cursor: pointer;
+  box-shadow: 0 0 6px rgba(212,168,60,0.5);
+}
+
+#sens-slider::-moz-range-thumb {
+  width: 15px; height: 15px;
+  border-radius: 50%;
+  background: var(--gold);
+  border: none;
+  cursor: pointer;
+}
+
+#sens-val {
+  font-size: 10px;
+  color: var(--gold);
+  min-width: 10px;
+  text-align: right;
+}
+
+/* ── Permission overlay ─────────────────────────────────── */
+#overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(8,4,2,0.96);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 22px;
+  z-index: 200;
+  padding: 24px;
+}
+
+#overlay .icon {
+  font-size: 72px;
+  animation: float 3s ease-in-out infinite;
+}
+
+@keyframes float {
+  0%,100% { transform: translateY(0) rotate(-3deg); }
+  50%      { transform: translateY(-8px) rotate(3deg); }
+}
+
+#overlay p {
+  color: var(--text);
+  font-size: 15px;
+  line-height: 1.9;
+  text-align: center;
+  opacity: 0.8;
+  max-width: 280px;
+}
+
+#overlay small {
+  font-size: 11px;
+  color: var(--gold);
+  opacity: 0.6;
+  text-align: center;
+}
+
+#start-btn {
+  background: linear-gradient(135deg, #e0b040, #c09020);
+  color: #1a0a04;
+  border: none;
+  padding: 15px 44px;
+  border-radius: 50px;
+  font-size: 17px;
+  font-weight: 900;
+  font-family: inherit;
+  cursor: pointer;
+  letter-spacing: 0.12em;
+  box-shadow:
+    0 6px 28px rgba(200,160,40,0.45),
+    inset 0 1px 2px rgba(255,255,255,0.3);
+  transition: transform 0.1s, box-shadow 0.1s;
+}
+
+#start-btn:active {
+  transform: scale(0.96);
+  box-shadow: 0 3px 14px rgba(200,160,40,0.35);
+}
+
+.hidden { display: none !important; }
+</style>
+</head>
+<body>
+
+<!-- Permission / Start overlay -->
+<div id="overlay">
+  <div class="icon">🥁</div>
+  <p>タンバリンを演奏しよう！<br>振ると「シャカ」、タップすると「タン」</p>
+  <button id="start-btn">▶ 開始する</button>
+  <small>端末を傾けると立体的に動きます</small>
+</div>
+
+<header>
+  <h1>🥁 Tambourine</h1>
+  <div id="motion-status">センサー起動中…</div>
+</header>
+
+<div id="tb-wrapper">
+  <div id="tb-inner">
+    <div id="tambourine">
+      <!-- Jingles injected by JS -->
+      <div id="membrane"></div>
+    </div>
+  </div>
+</div>
+
+<div id="word-display"></div>
+
+<div id="controls">
+  <label for="sens-slider">感度</label>
+  <input type="range" id="sens-slider" min="1" max="10" value="5" step="1">
+  <span id="sens-val">5</span>
+</div>
+
+<script>
+'use strict';
+
+/* ═══════════════════════════════════════════════════
+   AUDIO ENGINE
+═══════════════════════════════════════════════════ */
+let actx = null;
+let noiseBuffer = null;
+
+function ensureAudio() {
+  if (!actx) {
+    actx = new (window.AudioContext || window.webkitAudioContext)();
+  }
+  if (actx.state === 'suspended') actx.resume();
+  if (!noiseBuffer) {
+    // 1.5 seconds of white noise
+    const len = Math.ceil(actx.sampleRate * 1.5);
+    noiseBuffer = actx.createBuffer(1, len, actx.sampleRate);
+    const d = noiseBuffer.getChannelData(0);
+    for (let i = 0; i < len; i++) d[i] = Math.random() * 2 - 1;
+  }
+}
+
+/**
+ * Play a single metallic jingle sound
+ * @param {number} vol  0–1
+ * @param {number} pit  pitch multiplier (0.9–1.1 range)
+ * @param {number} del  delay in seconds
+ */
+function jingle(vol, pit, del) {
+  const t = actx.currentTime + del;
+
+  // ── Inharmonic metallic oscillators ──────────────────
+  // Real metal = partials with non-integer frequency ratios
+  const partials = [
+    {f: 7180, a: 0.42, d: 0.20},
+    {f: 11200, a: 0.28, d: 0.14},
+    {f: 8640, a: 0.22, d: 0.24},
+    {f: 14600, a: 0.15, d: 0.10},
+    {f: 6080, a: 0.18, d: 0.28},
+  ];
+
+  partials.forEach(({f, a, d}) => {
+    const osc = actx.createOscillator();
+    osc.type = 'sine';
+    osc.frequency.value = f * pit;
+    const g = actx.createGain();
+    g.gain.setValueAtTime(vol * a * 0.22, t);
+    g.gain.exponentialRampToValueAtTime(0.00001, t + d);
+    osc.connect(g); g.connect(actx.destination);
+    osc.start(t); osc.stop(t + d + 0.01);
+  });
+
+  // ── Noise burst (sizzle) ──────────────────────────────
+  const src = actx.createBufferSource();
+  src.buffer = noiseBuffer;
+  const offset = Math.random() * 0.8; // random start in buffer
+  
+  const hpf = actx.createBiquadFilter();
+  hpf.type = 'highpass';
+  hpf.frequency.value = 5500 * pit;
+  hpf.Q.value = 0.4;
+
+  const bpf = actx.createBiquadFilter();
+  bpf.type = 'peaking';
+  bpf.frequency.value = 9200 * pit;
+  bpf.gain.value = 7;
+
+  const ng = actx.createGain();
+  ng.gain.setValueAtTime(vol * 0.3, t);
+  ng.gain.exponentialRampToValueAtTime(0.00001, t + 0.13);
+
+  src.connect(hpf); hpf.connect(bpf); bpf.connect(ng); ng.connect(actx.destination);
+  src.start(t, offset); src.stop(t + 0.14);
+}
+
+/**
+ * Drum skin thud (for タン)
+ */
+function thud(vol) {
+  const t = actx.currentTime;
+
+  // Low body resonance with pitch drop
+  const body = actx.createOscillator();
+  body.type = 'sine';
+  body.frequency.setValueAtTime(200, t);
+  body.frequency.exponentialRampToValueAtTime(72, t + 0.10);
+  const bg = actx.createGain();
+  bg.gain.setValueAtTime(vol * 0.92, t);
+  bg.gain.exponentialRampToValueAtTime(0.00001, t + 0.18);
+  body.connect(bg); bg.connect(actx.destination);
+  body.start(t); body.stop(t + 0.20);
+
+  // Sharp impact click
+  const click = actx.createOscillator();
+  click.type = 'triangle';
+  click.frequency.setValueAtTime(1400, t);
+  click.frequency.exponentialRampToValueAtTime(280, t + 0.018);
+  const cg = actx.createGain();
+  cg.gain.setValueAtTime(vol * 0.55, t);
+  cg.gain.exponentialRampToValueAtTime(0.00001, t + 0.022);
+  click.connect(cg); cg.connect(actx.destination);
+  click.start(t); click.stop(t + 0.025);
+
+  // Mid overtone
+  const mid = actx.createOscillator();
+  mid.type = 'sine';
+  mid.frequency.setValueAtTime(420, t);
+  mid.frequency.exponentialRampToValueAtTime(180, t + 0.06);
+  const mg = actx.createGain();
+  mg.gain.setValueAtTime(vol * 0.28, t);
+  mg.gain.exponentialRampToValueAtTime(0.00001, t + 0.09);
+  mid.connect(mg); mg.connect(actx.destination);
+  mid.start(t); mid.stop(t + 0.10);
+
+  // Skin noise
+  const src = actx.createBufferSource();
+  src.buffer = noiseBuffer;
+  const lpf = actx.createBiquadFilter();
+  lpf.type = 'lowpass';
+  lpf.frequency.value = 2800;
+  const sng = actx.createGain();
+  sng.gain.setValueAtTime(vol * 0.25, t);
+  sng.gain.exponentialRampToValueAtTime(0.00001, t + 0.06);
+  src.connect(lpf); lpf.connect(sng); sng.connect(actx.destination);
+  src.start(t, Math.random() * 0.5); src.stop(t + 0.07);
+}
+
+/**
+ * Full TAP sound (タン = thud + jingles)
+ */
+function playTap() {
+  ensureAudio();
+  thud(0.88);
+  const count = 6;
+  for (let i = 0; i < count; i++) {
+    jingle(
+      0.52 - i * 0.06,
+      0.96 + Math.random() * 0.08,
+      i * 0.016
+    );
+  }
+}
+
+/**
+ * Shake sound (シャカ = jingle bursts only)
+ * @param {number} intensity  0–1
+ */
+function playShake(intensity) {
+  ensureAudio();
+  const count = Math.round(2 + intensity * 7);
+  const baseVol = 0.18 + intensity * 0.55;
+  const spread = 0.015 + (1 - intensity) * 0.03;
+  for (let i = 0; i < count; i++) {
+    jingle(
+      baseVol * Math.pow(0.82, i),
+      0.88 + Math.random() * 0.24,
+      i * spread
+    );
+  }
+}
+
+/* ═══════════════════════════════════════════════════
+   BUILD TAMBOURINE JINGLES
+═══════════════════════════════════════════════════ */
+const tambourine = document.getElementById('tambourine');
+const membrane   = document.getElementById('membrane');
+
+const NUM_JINGLES = 8;
+const jingleGroups = [];
+
+(function buildJingles() {
+  for (let i = 0; i < NUM_JINGLES; i++) {
+    const angle = (i / NUM_JINGLES) * 360;
+    const rad   = (angle - 90) * Math.PI / 180;
+    // Position at ~83% of diameter from center
+    const dist  = 41.2; // percent from center
+    const x = 50 + dist * Math.sin(rad);
+    const y = 50 - dist * Math.cos(rad);
+
+    const group = document.createElement('div');
+    group.className = 'jingle-group';
+    group.style.cssText = `
+      left: ${x.toFixed(2)}%;
+      top:  ${y.toFixed(2)}%;
+      transform: translate(-50%,-50%) rotate(${angle.toFixed(1)}deg);
+    `;
+
+    const slot = document.createElement('div');
+    slot.className = 'jingle-slot';
+    slot.innerHTML = '<div class="jingle-disc"></div><div class="jingle-disc"></div>';
+
+    group.appendChild(slot);
+    tambourine.insertBefore(group, membrane);
+    jingleGroups.push({ group, slot });
+  }
+})();
+
+/* ═══════════════════════════════════════════════════
+   VISUAL FEEDBACK
+═══════════════════════════════════════════════════ */
+const wordDisplay = document.getElementById('word-display');
+let wordTimer = null;
+
+function showWord(text, cls) {
+  clearTimeout(wordTimer);
+  // Build individual chars for stagger animation
+  const wrap = document.createElement('div');
+  wrap.className = `word-wrap ${cls}`;
+  [...text].forEach((ch, idx) => {
+    const span = document.createElement('span');
+    span.className = 'word-char';
+    span.textContent = ch;
+    span.style.animationDelay = `${idx * 0.04}s`;
+    wrap.appendChild(span);
+  });
+  wordDisplay.innerHTML = '';
+  wordDisplay.appendChild(wrap);
+
+  wordTimer = setTimeout(() => {
+    const chars = wordDisplay.querySelectorAll('.word-char');
+    chars.forEach((c, i) => {
+      c.style.animationDelay = `${i * 0.03}s`;
+      c.classList.add('word-fade-out');
+    });
+    setTimeout(() => { wordDisplay.innerHTML = ''; }, 350);
+  }, 480);
+}
+
+function createRipple(x, y) {
+  const r  = document.createElement('div');
+  const r2 = document.createElement('div');
+  r.className  = 'ripple';
+  r2.className = 'ripple-ring';
+  r.style.left = r2.style.left = x + 'px';
+  r.style.top  = r2.style.top  = y + 'px';
+  membrane.appendChild(r);
+  membrane.appendChild(r2);
+  r.addEventListener('animationend',  () => r.remove());
+  r2.addEventListener('animationend', () => r2.remove());
+}
+
+function triggerTapViz(cx, cy) {
+  createRipple(cx, cy);
+  membrane.classList.remove('flashing');
+  void membrane.offsetWidth; // reflow
+  membrane.classList.add('flashing');
+  membrane.addEventListener('animationend', () => membrane.classList.remove('flashing'), { once: true });
+  // Rattle nearby jingles
+  jingleGroups.forEach(({ slot }, i) => {
+    setTimeout(() => {
+      slot.classList.remove('rattling');
+      void slot.offsetWidth;
+      slot.classList.add('rattling');
+      slot.addEventListener('animationend', () => slot.classList.remove('rattling'), { once: true });
+    }, i * 12);
+  });
+}
+
+function triggerShakeViz(intensity) {
+  // Tambourine bounce
+  tambourine.style.animation = 'none';
+  void tambourine.offsetWidth;
+  tambourine.style.animation = 'tb-bounce 0.16s ease-in-out';
+  tambourine.addEventListener('animationend', () => { tambourine.style.animation = ''; }, { once: true });
+
+  // Rattle jingles (staggered, more intense = faster stagger)
+  jingleGroups.forEach(({ slot }, i) => {
+    const d = i * Math.max(5, 18 - intensity * 14);
+    setTimeout(() => {
+      slot.classList.remove('rattling');
+      void slot.offsetWidth;
+      slot.classList.add('rattling');
+      slot.addEventListener('animationend', () => slot.classList.remove('rattling'), { once: true });
+    }, d);
+  });
+}
+
+/* ═══════════════════════════════════════════════════
+   TAP INTERACTION
+═══════════════════════════════════════════════════ */
+let lastTapMs = 0;
+
+function handleTap(e) {
+  const now = Date.now();
+  if (now - lastTapMs < 70) return;
+  lastTapMs = now;
+
+  const rect = membrane.getBoundingClientRect();
+  let cx, cy;
+  if (e.changedTouches) {
+    cx = e.changedTouches[0].clientX - rect.left;
+    cy = e.changedTouches[0].clientY - rect.top;
+  } else {
+    cx = e.clientX - rect.left;
+    cy = e.clientY - rect.top;
+  }
+
+  playTap();
+  triggerTapViz(cx, cy);
+  showWord('タン！', 'word-tan');
+}
+
+membrane.addEventListener('touchstart', (e) => { e.preventDefault(); handleTap(e); }, { passive: false });
+membrane.addEventListener('mousedown',  handleTap);
+
+/* ═══════════════════════════════════════════════════
+   DEVICE MOTION (Shake + Tilt)
+═══════════════════════════════════════════════════ */
+const motionStatus = document.getElementById('motion-status');
+const tbInner = document.getElementById('tb-inner');
+
+let prevAcc    = null;
+let lastShakeMs = 0;
+let shakeWindow = [];
+const WIN = 5; // rolling average window size
+
+// Low-pass filtered gravity for tilt
+let gravLP = { x: 0, y: 0, z: -9.8 };
+const LP_ALPHA = 0.12;
+
+let motionActive = false;
+
+function onMotion(e) {
+  const raw  = e.accelerationIncludingGravity;
+  const pure = e.acceleration; // may be null
+  if (!raw) return;
+
+  const rx = raw.x || 0, ry = raw.y || 0, rz = raw.z || 0;
+
+  // ── Tilt parallax ────────────────────────────────────
+  gravLP.x += LP_ALPHA * (rx - gravLP.x);
+  gravLP.y += LP_ALPHA * (ry - gravLP.y);
+  gravLP.z += LP_ALPHA * (rz - gravLP.z);
+
+  // Normalise gravity to -1..1 range (~9.8 m/s² max)
+  const tiltX = Math.max(-1, Math.min(1, gravLP.y / 9.8));
+  const tiltY = Math.max(-1, Math.min(1, gravLP.x / 9.8));
+  const maxDeg = 14;
+  tbInner.style.transform =
+    `perspective(500px) rotateX(${(-tiltX * maxDeg).toFixed(2)}deg) rotateY(${(tiltY * maxDeg).toFixed(2)}deg)`;
+
+  // ── Shake detection ───────────────────────────────────
+  // Prefer acceleration-without-gravity; fall back to delta of raw
+  let ax, ay, az;
+  if (pure && pure.x != null) {
+    ax = pure.x || 0; ay = pure.y || 0; az = pure.z || 0;
+  } else {
+    // Subtract gravity estimate
+    ax = rx - gravLP.x; ay = ry - gravLP.y; az = rz - gravLP.z;
+  }
+
+  const cur = { x: ax, y: ay, z: az };
+
+  if (!prevAcc) { prevAcc = cur; return; }
+
+  const dx = cur.x - prevAcc.x;
+  const dy = cur.y - prevAcc.y;
+  const dz = cur.z - prevAcc.z;
+  const delta = Math.sqrt(dx*dx + dy*dy + dz*dz);
+  prevAcc = cur;
+
+  shakeWindow.push(delta);
+  if (shakeWindow.length > WIN) shakeWindow.shift();
+  const avg = shakeWindow.reduce((a, b) => a + b, 0) / shakeWindow.length;
+
+  const sens = parseInt(document.getElementById('sens-slider').value);
+  // threshold: sens 1 → 22, sens 10 → 4
+  const threshold = 24 - sens * 2;
+  const cooldown  = Math.max(38, 100 - sens * 6);
+
+  const now = Date.now();
+  if (avg > threshold && now - lastShakeMs > cooldown) {
+    lastShakeMs = now;
+    const intensity = Math.min(1, avg / (threshold * 2.8));
+    playShake(intensity);
+    triggerShakeViz(intensity);
+
+    // Build シャカ text (more intense = more repeats)
+    const rep = intensity < 0.35 ? 1 : intensity < 0.7 ? 2 : 3;
+    showWord('シャカ'.repeat(rep) + (intensity > 0.65 ? '！' : ''), 'word-shaka');
+  }
+}
+
+function startMotion() {
+  if (typeof DeviceMotionEvent !== 'undefined') {
+    if (typeof DeviceMotionEvent.requestPermission === 'function') {
+      // iOS 13+
+      DeviceMotionEvent.requestPermission()
+        .then(state => {
+          if (state === 'granted') {
+            window.addEventListener('devicemotion', onMotion);
+            motionStatus.textContent = '✅ センサー有効 · 振って鳴らそう！';
+            motionActive = true;
+          } else {
+            motionStatus.textContent = '❌ センサー権限なし · タップで演奏';
+          }
+        })
+        .catch(() => {
+          motionStatus.textContent = '⚠ センサーエラー · タップで演奏';
+        });
+    } else {
+      // Android / non-Safari
+      window.addEventListener('devicemotion', onMotion);
+
+      // Check if device actually sends events
+      let checkTimer = setTimeout(() => {
+        motionStatus.textContent = '💻 デスクトップモード · クリックで演奏';
+      }, 1200);
+
+      window.addEventListener('devicemotion', () => {
+        clearTimeout(checkTimer);
+        if (!motionActive) {
+          motionActive = true;
+          motionStatus.textContent = '✅ センサー有効 · 振って鳴らそう！';
+        }
+      }, { once: true });
+    }
+  } else {
+    motionStatus.textContent = '💻 デスクトップモード · クリックで演奏';
+  }
+}
+
+/* ═══════════════════════════════════════════════════
+   SENSITIVITY SLIDER
+═══════════════════════════════════════════════════ */
+const slider  = document.getElementById('sens-slider');
+const sensVal = document.getElementById('sens-val');
+slider.addEventListener('input', () => {
+  sensVal.textContent = slider.value;
+}, { passive: true });
+// Allow slider touch without triggering tambourine
+slider.addEventListener('touchstart', e => e.stopPropagation(), { passive: true });
+slider.addEventListener('touchmove',  e => e.stopPropagation(), { passive: true });
+
+/* ═══════════════════════════════════════════════════
+   START / PERMISSION OVERLAY
+═══════════════════════════════════════════════════ */
+const overlay  = document.getElementById('overlay');
+const startBtn = document.getElementById('start-btn');
+
+function doStart() {
+  ensureAudio();
+  startMotion();
+  overlay.classList.add('hidden');
+}
+
+startBtn.addEventListener('click', doStart);
+startBtn.addEventListener('touchend', e => { e.preventDefault(); doStart(); });
+
+// On desktop: any click outside overlay also starts
+document.addEventListener('click', () => {
+  if (!overlay.classList.contains('hidden')) return;
+  if (!actx) ensureAudio();
+}, { once: true });
+</script>
+</body>
+</html>
